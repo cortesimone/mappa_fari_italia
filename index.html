@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lights of Italy</title>
+<title>Lighthouses of Italy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,460;9..144,620&family=Outfit:wght@340;500&display=swap" rel="stylesheet">
@@ -108,9 +108,9 @@
 </head>
 <body>
 <canvas id="map"></canvas>
-<div id="status">Loading the lights…</div>
+<div id="status">Loading the lighthouses…</div>
 <div class="hud top-left">
-  <h1>Lights of Italy</h1>
+  <h1>Lighthouses of Italy</h1>
   <p class="lede" id="lede"></p>
   <div class="legend">
     <span><b style="background:#ffecc8"></b>White</span>
@@ -120,7 +120,7 @@
 </div>
 <div class="hud top-right">
   <div class="search-box">
-    <input id="q" type="search" placeholder="Search for a light" autocomplete="off" spellcheck="false">
+    <input id="q" type="search" placeholder="Search for a lighthouse" autocomplete="off" spellcheck="false">
     <div id="results" class="results"></div>
   </div>
   <div class="toggles">
@@ -203,19 +203,24 @@ function resize() {
 
 function fitItaly() {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const light of lights) {
-    const [x, y] = mercator(light.lon, light.lat);
-    minX = Math.min(minX, x); minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+  for (const ring of rings) {
+    for (const point of ring) {
+      const [x, y] = mercator(point[0], point[1]);
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
   }
-  const pad = width < 640 ? 54 : 90;
+  // Keep a margin around the silhouette, then put its middle on the middle of the window.
+  const pad = Math.max(48, Math.round(Math.min(width, height) * 0.09));
   const sx = (width - pad * 2) / (maxX - minX);
   const sy = (height - pad * 2) / (maxY - minY);
   view.scale = Math.min(sx, sy);
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
   view.x = width / 2 - cx * view.scale;
-  view.y = height / 2 - cy * view.scale + (width < 640 ? 20 : 0);
+  view.y = height / 2 - cy * view.scale;
   fit.scale = view.scale; fit.x = view.x; fit.y = view.y;
 }
 
@@ -740,7 +745,7 @@ async function main() {
   rings = italy.rings;
   const rotating = lights.filter((light) => light.kind === "rotating").length;
   document.getElementById("lede").textContent =
-    `${lights.length} lights on the Italian coast. ${rotating} rotating optics sweep on their own period; the others flash. Each beam reaches its nominal range.`;
+    `${lights.length} lighthouses on the Italian coast. ${rotating} rotating optics sweep on their own period; the others flash. Each beam reaches its nominal range.`;
   statusEl.textContent = "";
   statusEl.classList.add("gone");
   statusEl.dataset.ready = String(lights.length);
@@ -749,7 +754,7 @@ async function main() {
 }
 
 main().catch((error) => {
-  statusEl.textContent = "The light data could not be read. Open this page from a local server.";
+  statusEl.textContent = "The lighthouse data could not be read. Open this page from a local server.";
   console.error(error);
 });
 </script>

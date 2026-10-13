@@ -1,6 +1,6 @@
-# Lights of Italy
+# Lighthouses of Italy
 
-A night map of the Italian coast. Each light sweeps or flashes on the period printed on its card, and the beam reaches as far as its nominal range.
+A night map of the Italian coast. Each lighthouse sweeps or flashes on the period printed on its card, and the beam reaches as far as its nominal range.
 
 ![The Italian coast at night. Each beam reaches its nominal range.](docs/preview.png)
 
@@ -18,7 +18,7 @@ Then open http://127.0.0.1:8731/.
 
 ## What the map shows
 
-The dataset has 202 lights: 62 rotating optics and 140 flashing or steady lights. Seventy-two of them have a visibility sector.
+The dataset has 202 lighthouses: 62 rotating optics and 140 flashing or steady lights. Seventy-two of them have a visibility sector.
 
 A rotating optic is drawn as one or more narrow beams. `Fl W 5s` is one beam that turns once every 5 seconds. `Fl(2) W 20s` is two beams, opposite each other, turning once every 20 seconds. The gap between flashes comes from the phase line on the card when that line is present. The Lanterna di Genova is the second kind: white, two beams, 20 seconds, 25 nautical miles.
 
@@ -26,7 +26,7 @@ A flashing light does not sweep. The whole sector, or the whole horizon, brighte
 
 White, red, and green follow the card. Where the card gives colored sectors, a rotating beam takes the color of the sector it is passing through.
 
-Sector bearings on the Italian cards are given from seaward. The map turns them 180° so the ray points toward the water. That reading was checked against the coastline: for a sample of sectors, the seaward reading fell in the sea more often than the opposite reading. A sector is kept only when the bearings and the printed arc agree. Otherwise the light is drawn all round and the coastline does the masking.
+Sector bearings on the Italian cards are given from seaward. The map turns them 180° so the ray points toward the water. That reading was checked against the coastline: for a sample of sectors, the seaward reading fell in the sea more often than the opposite reading. A sector is kept only when the bearings and the printed arc agree. Otherwise the lighthouse is drawn all round and the coastline does the masking.
 
 Place names stay in Italian. They are the names on the cards.
 
@@ -34,11 +34,11 @@ Place names stay in Italian. They are the names on the cards.
 
 Drag to pan. Scroll, pinch, or use the + and − buttons to zoom. Press `0` to fit Italy again. Press `Esc` to clear the selection.
 
-Search matches the light name, the city, the place, and the region. Choosing a result flies there and pins the card.
+Search matches the lighthouse name, the city, the place, and the region. Choosing a result flies there and pins the card.
 
-Click a light to pin its card. Click empty water to dismiss it. The card shows the chart character, the range, the height of the light, whether the optic rotates or flashes, and the sector text.
+Click a lighthouse to pin its card. Click empty water to dismiss it. The card shows the chart character, the range, the height of the light, whether the optic rotates or flashes, and the sector text.
 
-**Range rings** draws a circle at the nominal range of every light. The circle of the light under the pointer is always drawn. **Pause** freezes the clock so a beam stays put.
+**Range rings** draws a circle at the nominal range of every lighthouse. The circle of the lighthouse under the pointer is always drawn. **Pause** freezes the clock so a beam stays put.
 
 The scale bar is in nautical miles and changes as you zoom.
 
@@ -64,12 +64,12 @@ The character is the code a chart uses to identify a light.
 
 ```
 index.html              the map
-data/lights.json        one record per light
+data/lights.json        one record per lighthouse
 data/italy.json         simplified coastline, as rings of [longitude, latitude]
 scripts/build_data.py   rebuilds the two JSON files from the WAIL cards
 ```
 
-A light record looks like this:
+A lighthouse record looks like this:
 
 ```json
 {
@@ -118,11 +118,11 @@ The script writes `data/lights.json` and `data/italy.json`. It drops cards with 
 
 ## Limits
 
-This is the WAIL list of major Italian lights, not every buoy and harbour lamp. A few harbour lights from that list are included when the card gives a character and a range.
+This is the WAIL list of major Italian lighthouses, not every buoy and harbour lamp. A few harbour lights from that list are included when the card gives a character and a range.
 
-The coast is a simplified outline of the landmass, about 6,400 points. A light on a mole can sit slightly inland of that line, and its beam is then covered. Small rocks are kept, but the shore is not accurate enough for navigation.
+The coast is a simplified outline of the landmass, about 6,400 points. A lighthouse on a mole can sit slightly inland of that line, and its beam is then covered. Small rocks are kept, but the shore is not accurate enough for navigation.
 
-Some sector sentences on the cards are prose rather than a pair of bearings. Those lights are drawn all round. The card on the map glosses the common Italian words (`Vis`, `oscurato`, `settore`) into English and leaves the bearings as printed.
+Some sector sentences on the cards are prose rather than a pair of bearings. Those lighthouses are drawn all round. The card on the map glosses the common Italian words (`Vis`, `oscurato`, `settore`) into English and leaves the bearings as printed.
 
 The official Italian List of Lights (*Elenco dei fari e segnali da nebbia*, Istituto Idrografico della Marina) is a copyrighted publication. It is not the source of this dataset, and it should not be copied into the page.
 
@@ -130,11 +130,11 @@ Nothing here is for navigation.
 
 ## Sources
 
-Light names, positions, periods, phases, ranges, and sectors come from the WAIL reference cards published by ARI Genova: https://www.arigenova.it/wail/referenze%20fari%20italiani.php
+Names, positions, periods, phases, ranges, and sectors come from the WAIL reference cards published by ARI Genova: https://www.arigenova.it/wail/referenze%20fari%20italiani.php
 
 The coastline comes from Openpolis, `geojson-italy`.
 
-The night-map idea, a coast where every light runs on its charted rhythm, follows the New England map on [mapped.earth](https://mapped.earth/lighthouses/new-england).
+The night-map idea, a coast where every lighthouse runs on its charted rhythm, follows the New England map on [mapped.earth](https://mapped.earth/lighthouses/new-england).
 
 ## Licence
 
@@ -142,4 +142,4 @@ The page and `scripts/build_data.py` are under the MIT licence. See [LICENSE](LI
 
 `data/italy.json` is adapted from the regional boundaries in [geojson-italy](https://github.com/openpolis/geojson-italy) by Openpolis, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The outline was dissolved to the outer shore and simplified. That file stays under CC BY 4.0.
 
-The light characteristics in `data/lights.json` are taken from the WAIL reference cards of ARI Genova. Those cards are not covered by the MIT licence.
+The characteristics in `data/lights.json` are taken from the WAIL reference cards of ARI Genova. Those cards are not covered by the MIT licence.
