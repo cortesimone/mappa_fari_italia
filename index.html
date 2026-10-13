@@ -65,6 +65,7 @@
     font-size: 12px; line-height: 1.4; max-width: min(520px, calc(100vw - 90px));
     text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
   }
+  .foot a { color: inherit; }
   .scale { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: var(--ink); }
   .scale i {
     display: block; height: 0; border-top: 1.5px solid var(--ink);
@@ -133,7 +134,7 @@
 </div>
 <div class="foot">
   <div class="scale"><i id="scale-bar"></i><span id="scale-label">20 nmi</span></div>
-  <div>Characteristics from the WAIL cards of ARI Genova. Beam length is the nominal range.</div>
+  <div>Characteristics from the <a href="https://www.arigenova.it/wail/referenze%20fari%20italiani.php">WAIL cards of ARI Genova</a>. Coastline adapted from <a href="https://github.com/openpolis/geojson-italy">Openpolis geojson-italy</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC&nbsp;BY&nbsp;4.0</a>. Beam length is the nominal range.</div>
 </div>
 <div id="card" class="card"></div>
 <script>

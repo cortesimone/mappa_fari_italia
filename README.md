@@ -135,3 +135,11 @@ Light names, positions, periods, phases, ranges, and sectors come from the WAIL 
 The coastline comes from Openpolis, `geojson-italy`.
 
 The night-map idea, a coast where every light runs on its charted rhythm, follows the New England map on [mapped.earth](https://mapped.earth/lighthouses/new-england).
+
+## Licence
+
+The page and `scripts/build_data.py` are under the MIT licence. See [LICENSE](LICENSE).
+
+`data/italy.json` is adapted from the regional boundaries in [geojson-italy](https://github.com/openpolis/geojson-italy) by Openpolis, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The outline was dissolved to the outer shore and simplified. That file stays under CC BY 4.0.
+
+The light characteristics in `data/lights.json` are taken from the WAIL reference cards of ARI Genova. Those cards are not covered by the MIT licence.
