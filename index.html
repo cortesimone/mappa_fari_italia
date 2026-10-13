@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lights of Italy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,460;9..144,620&family=Outfit:wght@340;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #e7e0d2;
+    --muted: #93a0ab;
+    --line: rgba(231, 224, 210, 0.16);
+    --panel: rgba(8, 12, 16, 0.72);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #05080c; color: var(--ink); }
+  body { font-family: Outfit, "Segoe UI", sans-serif; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+  canvas.dragging { cursor: grabbing; }
+  .hud, .card, .search-box, .results { pointer-events: auto; }
+  .hud {
+    position: fixed; z-index: 2; display: flex; flex-direction: column; gap: 6px;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.65);
+  }
+  .top-left { top: 22px; left: 26px; max-width: min(440px, calc(100vw - 48px)); }
+  h1 {
+    margin: 0; font-family: Fraunces, Georgia, serif; font-weight: 460;
+    font-size: 34px; letter-spacing: -0.03em; line-height: 1;
+  }
+  .lede { margin: 8px 0 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; max-width: 34em; }
+  .top-right { top: 22px; right: 22px; align-items: flex-end; }
+  .search-box { position: relative; }
+  input[type="search"] {
+    width: min(260px, 70vw); background: var(--panel); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px;
+    font: 14px Outfit, sans-serif; outline: none; backdrop-filter: blur(8px);
+  }
+  input[type="search"]::placeholder { color: #7e8b96; }
+  .results {
+    position: absolute; right: 0; top: calc(100% + 6px); width: min(320px, 80vw);
+    background: rgba(8, 12, 16, 0.92); border: 1px solid var(--line); border-radius: 12px;
+    overflow: hidden; display: none; backdrop-filter: blur(10px);
+  }
+  .results.open { display: block; }
+  .results button {
+    display: block; width: 100%; text-align: left; background: transparent; color: var(--ink);
+    border: 0; border-bottom: 1px solid rgba(231, 224, 210, 0.06);
+    padding: 8px 12px; font: 13px Outfit, sans-serif; cursor: pointer;
+  }
+  .results button:hover { background: rgba(255, 244, 220, 0.06); }
+  .results small { display: block; color: var(--muted); font-size: 11px; }
+  .toggles { display: flex; gap: 8px; margin-top: 8px; }
+  .toggles button, .zoom button {
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 999px; padding: 7px 12px; font: 12.5px Outfit, sans-serif;
+    cursor: pointer; backdrop-filter: blur(8px);
+  }
+  .toggles button[aria-pressed="true"] { background: rgba(255, 236, 206, 0.16); }
+  .zoom { position: fixed; right: 22px; bottom: 22px; z-index: 2; display: flex; flex-direction: column; gap: 6px; }
+  .zoom button { width: 36px; height: 36px; padding: 0; font-size: 18px; }
+  .foot {
+    position: fixed; left: 26px; bottom: 18px; z-index: 2; color: var(--muted);
+    font-size: 12px; line-height: 1.4; max-width: min(520px, calc(100vw - 90px));
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+  }
+  .scale { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: var(--ink); }
+  .scale i {
+    display: block; height: 0; border-top: 1.5px solid var(--ink);
+    border-left: 1.5px solid var(--ink); border-right: 1.5px solid var(--ink);
+    width: 84px;
+  }
+  .card {
+    position: fixed; z-index: 3; min-width: 220px; max-width: 280px;
+    background: rgba(7, 10, 14, 0.88); border: 1px solid var(--line); border-radius: 14px;
+    padding: 12px 14px 11px; backdrop-filter: blur(10px); display: none;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  }
+  .card.show { display: block; }
+  .card h2 {
+    margin: 0; font-family: Fraunces, Georgia, serif; font-weight: 560;
+    font-size: 20px; letter-spacing: -0.02em; line-height: 1.15;
+  }
+  .card .where { margin: 3px 0 8px; color: var(--muted); font-size: 12.5px; }
+  .card .char {
+    font-variant-numeric: tabular-nums; letter-spacing: 0.01em;
+    font-size: 15px; color: #fff6e4;
+  }
+  .card dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 8px 0 0; }
+  .card dt { color: var(--muted); font-size: 11.5px; }
+  .card dd { margin: 0; font-size: 12.5px; text-align: right; }
+  .legend { display: flex; gap: 12px; margin-top: 8px; color: var(--muted); font-size: 12px; }
+  .legend b { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+  #status { position: fixed; inset: 0; display: grid; place-items: center; color: var(--muted); z-index: 4; }
+  #status.gone { display: none; }
+  @media (max-width: 640px) {
+    h1 { font-size: 28px; }
+    .top-left { top: 14px; left: 14px; right: 14px; }
+    .top-right { top: 92px; left: 14px; right: 14px; align-items: stretch; }
+    .search-box input[type="search"] { width: 100%; }
+    .toggles { justify-content: flex-start; }
+    .foot { left: 14px; bottom: 14px; }
+    .lede { display: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="map"></canvas>
+<div id="status">Loading the lights…</div>
+<div class="hud top-left">
+  <h1>Lights of Italy</h1>
+  <p class="lede" id="lede"></p>
+  <div class="legend">
+    <span><b style="background:#ffecc8"></b>White</span>
+    <span><b style="background:#ff484e"></b>Red</span>
+    <span><b style="background:#4eff9a"></b>Green</span>
+  </div>
+</div>
+<div class="hud top-right">
+  <div class="search-box">
+    <input id="q" type="search" placeholder="Search for a light" autocomplete="off" spellcheck="false">
+    <div id="results" class="results"></div>
+  </div>
+  <div class="toggles">
+    <button id="rings" type="button" aria-pressed="false">Range rings</button>
+    <button id="pause" type="button" aria-pressed="false">Pause</button>
+  </div>
+</div>
+<div class="zoom">
+  <button id="zin" type="button" aria-label="Zoom in">+</button>
+  <button id="zout" type="button" aria-label="Zoom out">−</button>
+</div>
+<div class="foot">
+  <div class="scale"><i id="scale-bar"></i><span id="scale-label">20 nmi</span></div>
+  <div>Characteristics from the WAIL cards of ARI Genova. Beam length is the nominal range.</div>
+</div>
+<div id="card" class="card"></div>
+<script>
+const NM = 1852;
+const EARTH = 40075016.686;
+const COLORS = {
+  W: [255, 236, 200],
+  R: [255, 72, 78],
+  G: [78, 255, 154],
+  Y: [255, 208, 90],
+};
+
+const canvas = document.getElementById("map");
+const ctx = canvas.getContext("2d", { alpha: false });
+const card = document.getElementById("card");
+const statusEl = document.getElementById("status");
+
+const view = { scale: 800, x: 0, y: 0 };
+let lights = [];
+let rings = [];
+let hoverId = null;
+let pinnedId = null;
+let showRings = false;
+let frameError = null;
+let paused = false;
+let pauseAt = 0;
+let dpr = 1;
+let width = 1;
+let height = 1;
+const fit = { scale: 800, x: 0, y: 0 };
+
+function mercator(lon, lat) {
+  const x = (lon + 180) / 360;
+  const s = Math.sin(lat * Math.PI / 180);
+  const y = 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI);
+  return [x, y];
+}
+
+function project(lon, lat) {
+  const [x, y] = mercator(lon, lat);
+  return [x * view.scale + view.x, y * view.scale + view.y];
+}
+
+function unproject(sx, sy) {
+  return [(sx - view.x) / view.scale, (sy - view.y) / view.scale];
+}
+
+function metersPerPixel(lat) {
+  return Math.cos(lat * Math.PI / 180) * EARTH / view.scale;
+}
+
+function rangePixels(light) {
+  return light.range * NM / metersPerPixel(light.lat);
+}
+
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  width = window.innerWidth;
+  height = window.innerHeight;
+  canvas.width = Math.round(width * dpr);
+  canvas.height = Math.round(height * dpr);
+  canvas.style.width = width + "px";
+  canvas.style.height = height + "px";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function fitItaly() {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const light of lights) {
+    const [x, y] = mercator(light.lon, light.lat);
+    minX = Math.min(minX, x); minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+  }
+  const pad = width < 640 ? 54 : 90;
+  const sx = (width - pad * 2) / (maxX - minX);
+  const sy = (height - pad * 2) / (maxY - minY);
+  view.scale = Math.min(sx, sy);
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  view.x = width / 2 - cx * view.scale;
+  view.y = height / 2 - cy * view.scale + (width < 640 ? 20 : 0);
+  fit.scale = view.scale; fit.x = view.x; fit.y = view.y;
+}
+
+function phaseOf(light, time) {
+  // Spread lights through their cycle so the coast is not one shared blink.
+  // The period itself stays the one printed on the card.
+  let hash = 0;
+  for (let i = 0; i < light.id.length; i++) hash = (hash * 33 + light.id.charCodeAt(i)) >>> 0;
+  return time + (hash % 1000) / 1000 * (light.period || 1);
+}
+
+function clockwise(a, b) {
+  const span = (b - a) % 360;
+  return span === 0 ? 360 : (span + 360) % 360;
+}
+
+function bearingToCanvas(bearing) {
+  return (bearing - 90) * Math.PI / 180;
+}
+
+function containsBearing(sector, bearing) {
+  const span = clockwise(sector.a, sector.b);
+  const rel = (bearing - sector.a + 360) % 360;
+  return rel <= span + 0.05;
+}
+
+function colorOf(light, bearing) {
+  if (light.sectors && bearing != null) {
+    for (const sector of light.sectors) {
+      if (containsBearing(sector, bearing)) return sector.color || light.colors[0] || "W";
+    }
+    return null;
+  }
+  return light.colors[0] || "W";
+}
+
+function rgba(letter, alpha) {
+  const [r, g, b] = COLORS[letter] || COLORS.W;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function defaultOn(light) {
+  const character = light.character;
+  const period = light.period;
+  if (character.startsWith("Iso")) return period * 0.5;
+  if (character.startsWith("Oc")) return Math.max(0.2, period - Math.min(1.2, period * 0.25));
+  if (character.startsWith("LFl")) return Math.min(period * 0.45, 2.4);
+  if (character.startsWith("Q") || character.startsWith("VQ")) return Math.min(0.25, period * 0.2);
+  if (character.startsWith("Mo")) return period * 0.35;
+  return Math.min(0.45, Math.max(0.15, period * 0.08));
+}
+
+function flashOn(light, time) {
+  if (light.kind === "fixed") return 1;
+  if (light.kind !== "flash") return 1;
+  const period = light.period || 5;
+  let x = ((time % period) + period) % period;
+  const phases = light.phases;
+  if (phases && phases.length) {
+    let cursor = 0;
+    for (let i = 0; i < phases.length; i++) {
+      const next = cursor + phases[i];
+      if (x <= next) return i % 2 === 0 ? edgeFade(x - cursor, next - x) : 0;
+      cursor = next;
+    }
+    return 0;
+  }
+  const on = defaultOn(light);
+  return x < on ? edgeFade(x, on - x) : 0;
+}
+
+function edgeFade(into, left) {
+  const ramp = 0.045;
+  return Math.max(0, Math.min(1, into / ramp, left / ramp, 1));
+}
+
+function traceRing(ring) {
+  const [x, y] = project(ring[0][0], ring[0][1]);
+  ctx.moveTo(x, y);
+  for (let i = 1; i < ring.length; i++) {
+    const [px, py] = project(ring[i][0], ring[i][1]);
+    ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
+function drawSea() {
+  const glow = ctx.createRadialGradient(width * 0.5, height * 0.46, width * 0.1, width * 0.5, height * 0.5, width * 0.75);
+  glow.addColorStop(0, "#10202b");
+  glow.addColorStop(0.55, "#08141c");
+  glow.addColorStop(1, "#05090e");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, width, height);
+}
+
+function drawGraticule() {
+  const step = view.scale > fit.scale * 4 ? 1 : 2;
+  ctx.save();
+  ctx.beginPath();
+  ctx.strokeStyle = "rgba(180, 200, 214, 0.045)";
+  ctx.lineWidth = 1;
+  const [lon0] = unproject(0, 0);
+  const [lon1] = unproject(width, 0);
+  const start = Math.floor((lon0 * 360 - 180) / step) * step - 2;
+  const end = (lon1 * 360 - 180) + step;
+  for (let lon = start; lon <= end; lon += step) {
+    ctx.beginPath();
+    for (let lat = 34; lat <= 48; lat += 0.5) {
+      const [x, y] = project(lon, lat);
+      if (lat === 34) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  for (let lat = 36; lat <= 47; lat += step) {
+    ctx.beginPath();
+    const west = lon0 * 360 - 180;
+    const east = lon1 * 360 - 180;
+    for (let lon = west; lon <= east; lon += 0.4) {
+      const [x, y] = project(lon, lat);
+      if (lon === west) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function clipSectors(light, radius) {
+  ctx.beginPath();
+  if (!light.sectors) {
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    return;
+  }
+  for (const sector of light.sectors) {
+    const a0 = bearingToCanvas(sector.a);
+    const a1 = bearingToCanvas(sector.b);
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, radius, a0, a1, false);
+    ctx.closePath();
+  }
+}
+
+function fillGlow(radius, letter, alpha) {
+  const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+  gradient.addColorStop(0, rgba(letter, alpha));
+  gradient.addColorStop(0.18, rgba(letter, alpha * 0.28));
+  gradient.addColorStop(0.55, rgba(letter, alpha * 0.08));
+  gradient.addColorStop(1, rgba(letter, 0));
+  ctx.fillStyle = gradient;
+  ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+}
+
+function drawBeam(radius, letter, widthDeg) {
+  const half = Math.max(widthDeg, 1.5) * Math.PI / 360;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.arc(0, 0, radius, -half, half, false);
+  ctx.closePath();
+  ctx.save();
+  ctx.clip();
+  const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+  gradient.addColorStop(0, rgba(letter, 0.95));
+  gradient.addColorStop(0.05, rgba(letter, 0.55));
+  gradient.addColorStop(0.35, rgba(letter, 0.16));
+  gradient.addColorStop(1, rgba(letter, 0));
+  ctx.fillStyle = gradient;
+  ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+  ctx.restore();
+  ctx.strokeStyle = rgba(letter, 0.9);
+  ctx.lineWidth = 1.25;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(radius, 0);
+  ctx.stroke();
+}
+
+function drawLights(time) {
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const light of lights) {
+    const radius = rangePixels(light);
+    const [sx, sy] = project(light.lon, light.lat);
+    light.sx = sx; light.sy = sy; light.radiusPx = radius;
+    if (!(radius > 0) || !Number.isFinite(sx) || !Number.isFinite(sy)) continue;
+    if (sx < -radius || sy < -radius || sx > width + radius || sy > height + radius) continue;
+    ctx.save();
+    ctx.translate(sx, sy);
+    if (showRings || light.id === hoverId || light.id === pinnedId) {
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(255, 236, 200, 0.16)";
+      ctx.lineWidth = 1;
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    if (light.kind === "rotating" && light.beams) {
+      ctx.save();
+      clipSectors(light, radius * 1.02);
+      ctx.clip();
+      const sweep = (phaseOf(light, time) / light.period) * 360;
+      for (const beam of light.beams) {
+        const bearing = (beam.ang + sweep) % 360;
+        const letter = colorOf(light, bearing);
+        if (!letter) continue;
+        ctx.save();
+        ctx.rotate(bearingToCanvas(bearing));
+        drawBeam(radius, letter, beam.width);
+        ctx.restore();
+      }
+      ctx.restore();
+    } else {
+      const alpha = flashOn(light, phaseOf(light, time));
+      if (alpha > 0.02) {
+        const letter = light.colors[0] || "W";
+        if (light.sectors && light.sectors.some((sector) => sector.color && sector.color !== letter)) {
+          for (const sector of light.sectors) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, radius, bearingToCanvas(sector.a), bearingToCanvas(sector.b), false);
+            ctx.closePath();
+            ctx.clip();
+            fillGlow(radius, sector.color || letter, 0.55 * alpha);
+            ctx.restore();
+          }
+        } else {
+          ctx.save();
+          clipSectors(light, radius);
+          ctx.clip();
+          fillGlow(radius, letter, (light.kind === "fixed" ? 0.28 : 0.5) * alpha);
+          ctx.restore();
+        }
+      }
+    }
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawLand() {
+  ctx.beginPath();
+  for (const ring of rings) traceRing(ring);
+  ctx.strokeStyle = "rgba(198, 220, 234, 0.55)";
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  ctx.fillStyle = "#121920";
+  // Nonzero keeps overlapping regional borders filled. Even-odd would
+  // punch holes where two regions share an edge and let beams show on land.
+  ctx.fill("nonzero");
+}
+
+function drawCores() {
+  const active = pinnedId || hoverId;
+  for (const light of lights) {
+    if (light.sx < -20 || light.sy < -20 || light.sx > width + 20 || light.sy > height + 20) continue;
+    const letter = light.colors[0] || "W";
+    const hot = light.id === active;
+    ctx.beginPath();
+    ctx.fillStyle = rgba(letter, hot ? 1 : 0.95);
+    ctx.arc(light.sx, light.sy, hot ? 3.3 : 2.15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.fillStyle = "rgba(255, 250, 240, 0.95)";
+    ctx.arc(light.sx, light.sy, hot ? 1.35 : 0.85, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  drawLabels(active);
+}
+
+function drawLabels(active) {
+  const zoomRatio = view.scale / fit.scale;
+  if (zoomRatio < 2.2 && !active) return;
+  ctx.font = "12px Outfit, sans-serif";
+  ctx.textBaseline = "middle";
+  const boxes = [];
+  const named = lights.filter((light) => {
+    if (light.sx < 8 || light.sy < 8 || light.sx > width - 8 || light.sy > height - 8) return false;
+    if (light.id === active) return true;
+    if (zoomRatio > 7) return true;
+    return light.range >= 18 && zoomRatio > 2.2;
+  });
+  named.sort((a, b) => b.range - a.range);
+  for (const light of named) {
+    const text = light.name;
+    const tw = ctx.measureText(text).width;
+    const x = light.sx + 8;
+    const y = light.sy;
+    const box = { x: x - 2, y: y - 8, w: tw + 6, h: 16 };
+    if (light.id !== active && boxes.some((other) => overlap(box, other))) continue;
+    boxes.push(box);
+    ctx.fillStyle = light.id === active ? "rgba(255, 246, 230, 0.95)" : "rgba(214, 222, 228, 0.78)";
+    ctx.fillText(text, x, y);
+  }
+}
+
+function overlap(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function drawScale() {
+  const mid = lights.reduce((best, light) => {
+    const dx = light.sx - width / 2;
+    const dy = light.sy - height / 2;
+    const score = dx * dx + dy * dy;
+    return score < best.score ? { score, light } : best;
+  }, { score: Infinity, light: lights[0] });
+  const mpp = metersPerPixel(mid.light.lat);
+  const miles = [100, 50, 20, 10, 5, 2, 1].find((choice) => choice * NM / mpp <= 150) || 1;
+  const px = Math.max(28, miles * NM / mpp);
+  document.getElementById("scale-bar").style.width = px.toFixed(0) + "px";
+  document.getElementById("scale-label").textContent = miles + " nmi";
+}
+
+function frame(stamp) {
+  if (frameError) return;
+  try {
+    const time = paused ? pauseAt : stamp / 1000;
+    drawSea();
+    drawGraticule();
+    drawLights(time);
+    drawLand();
+    drawCores();
+    drawScale();
+    document.body.dataset.ready = "1";
+  } catch (error) {
+    frameError = error;
+    console.error(error);
+  }
+  requestAnimationFrame(frame);
+}
+
+function pick(x, y) {
+  let best = null;
+  let bestDist = 16 * 16;
+  for (const light of lights) {
+    const dx = light.sx - x;
+    const dy = light.sy - y;
+    const dist = dx * dx + dy * dy;
+    if (dist < bestDist) { bestDist = dist; best = light; }
+  }
+  return best;
+}
+
+function sectorLabel(text) {
+  const directions = { N: "north", S: "south", E: "east", W: "west" };
+  return text
+    .replace(/\bvisibile\b/gi, "visible")
+    .replace(/\bvis\b/gi, "visible")
+    .replace(/\boccultat\w*/gi, "obscured")
+    .replace(/\boscurat\w*/gi, "obscured")
+    .replace(/\bocc\b/gi, "obscured")
+    .replace(/\bsettore\b/gi, "sector")
+    .replace(/\bparz\.?/gi, "partial")
+    .replace(/\bcentrato sull['’]allineamento\b/gi, "centered on the leading line")
+    .replace(/\bsull['’]isolotto\b/gi, "on the islet")
+    .replace(/\bsullo scoglio\b/gi, "on the rock")
+    .replace(/\bdalla costa\b/gi, "by the coast")
+    .replace(/\bfino a\b/gi, "up to")
+    .replace(/\ba\s+([NSEW])\s+di\b/gi, (_, dir) => (directions[dir.toUpperCase()] || dir) + " of")
+    .replace(/\bda\b/gi, "from");
+}
+
+function placeCard(light, x, y) {
+  if (!light) { card.classList.remove("show"); return; }
+  const where = [light.place && light.place !== light.name ? light.place : null, light.city, light.region]
+    .filter(Boolean).join(" · ");
+  const optic = light.kind === "rotating" ? "rotating" : light.kind === "fixed" ? "fixed, steady" : "flashing";
+  const rows = [
+    ["Range", light.range.toLocaleString("en-US") + " nmi"],
+    light.height ? ["Height", light.height.toLocaleString("en-US") + " m"] : null,
+    ["Optic", optic],
+    light.sectorText ? ["Sectors", sectorLabel(light.sectorText)] : null,
+  ].filter(Boolean);
+  card.innerHTML = `<h2>${escapeHtml(light.name)}</h2>
+    <div class="where">${escapeHtml(where)}</div>
+    <div class="char">${escapeHtml(light.character)}</div>
+    <dl>${rows.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd>`).join("")}</dl>`;
+  card.classList.add("show");
+  const pad = 14;
+  let left = x + 16;
+  let top = y + 16;
+  const rectW = 280;
+  const rectH = 180;
+  if (left + rectW > width - 8) left = x - rectW - 8;
+  if (top + rectH > height - 8) top = y - rectH;
+  card.style.left = Math.max(8, left) + "px";
+  card.style.top = Math.max(8, top) + "px";
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[ch]));
+}
+
+function zoomAt(factor, sx, sy) {
+  const next = Math.max(fit.scale * 0.85, Math.min(fit.scale * 90, view.scale * factor));
+  const [mx, my] = unproject(sx, sy);
+  view.scale = next;
+  view.x = sx - mx * view.scale;
+  view.y = sy - my * view.scale;
+}
+
+function focusLight(light) {
+  const [mx, my] = mercator(light.lon, light.lat);
+  view.scale = Math.max(view.scale, fit.scale * 6);
+  view.x = width / 2 - mx * view.scale;
+  view.y = height / 2 - my * view.scale;
+  pinnedId = light.id;
+  hoverId = light.id;
+  placeCard(light, width * 0.62, height * 0.34);
+}
+
+let drag = null;
+canvas.addEventListener("pointerdown", (event) => {
+  canvas.setPointerCapture(event.pointerId);
+  drag = { x: event.clientX, y: event.clientY, moved: false, vx: view.x, vy: view.y };
+  canvas.classList.add("dragging");
+});
+canvas.addEventListener("pointermove", (event) => {
+  if (drag) {
+    const dx = event.clientX - drag.x;
+    const dy = event.clientY - drag.y;
+    if (dx * dx + dy * dy > 9) drag.moved = true;
+    view.x = drag.vx + dx;
+    view.y = drag.vy + dy;
+    return;
+  }
+  const light = pick(event.clientX, event.clientY);
+  hoverId = light ? light.id : pinnedId;
+  if (light && light.id !== pinnedId) placeCard(light, event.clientX, event.clientY);
+  else if (!pinnedId) card.classList.remove("show");
+  else if (pinnedId) placeCard(lights.find((item) => item.id === pinnedId), event.clientX, event.clientY);
+});
+canvas.addEventListener("pointerup", (event) => {
+  canvas.classList.remove("dragging");
+  if (drag && !drag.moved) {
+    const light = pick(event.clientX, event.clientY);
+    pinnedId = light ? light.id : null;
+    hoverId = pinnedId;
+    if (light) placeCard(light, event.clientX, event.clientY);
+    else card.classList.remove("show");
+  }
+  drag = null;
+});
+canvas.addEventListener("pointerleave", () => {
+  if (!pinnedId) { hoverId = null; card.classList.remove("show"); }
+});
+canvas.addEventListener("wheel", (event) => {
+  event.preventDefault();
+  const factor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
+  zoomAt(factor, event.clientX, event.clientY);
+}, { passive: false });
+
+document.getElementById("zin").onclick = () => zoomAt(1.3, width / 2, height / 2);
+document.getElementById("zout").onclick = () => zoomAt(1 / 1.3, width / 2, height / 2);
+document.getElementById("rings").onclick = (event) => {
+  showRings = !showRings;
+  event.currentTarget.setAttribute("aria-pressed", String(showRings));
+};
+document.getElementById("pause").onclick = (event) => {
+  paused = !paused;
+  if (paused) pauseAt = performance.now() / 1000;
+  event.currentTarget.setAttribute("aria-pressed", String(paused));
+  event.currentTarget.textContent = paused ? "Resume" : "Pause";
+};
+
+const search = document.getElementById("q");
+const results = document.getElementById("results");
+search.addEventListener("input", () => {
+  const query = search.value.trim().toLowerCase();
+  if (query.length < 1) { results.classList.remove("open"); results.innerHTML = ""; return; }
+  const found = lights.filter((light) =>
+    (light.name + " " + light.city + " " + (light.place || "") + " " + light.region).toLowerCase().includes(query)
+  ).slice(0, 8);
+  results.innerHTML = found.map((light) =>
+    `<button type="button" data-id="${light.id}">${escapeHtml(light.name)}<small>${escapeHtml(light.city)} · ${escapeHtml(light.character)}</small></button>`
+  ).join("");
+  results.classList.toggle("open", found.length > 0);
+});
+results.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+  const light = lights.find((item) => item.id === button.dataset.id);
+  if (!light) return;
+  focusLight(light);
+  results.classList.remove("open");
+  search.value = light.name;
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    pinnedId = null; hoverId = null; card.classList.remove("show");
+    results.classList.remove("open");
+  }
+  if (event.target === search) return;
+  if (event.key === "+" || event.key === "=") zoomAt(1.3, width / 2, height / 2);
+  if (event.key === "-" || event.key === "_") zoomAt(1 / 1.3, width / 2, height / 2);
+  if (event.key === "0") { view.scale = fit.scale; view.x = fit.x; view.y = fit.y; }
+});
+
+let pinch = null;
+canvas.addEventListener("touchmove", (event) => {
+  if (event.touches.length === 2) {
+    event.preventDefault();
+    const [a, b] = event.touches;
+    const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    const cx = (a.clientX + b.clientX) / 2;
+    const cy = (a.clientY + b.clientY) / 2;
+    if (pinch) zoomAt(dist / pinch.dist, cx, cy);
+    pinch = { dist };
+  }
+}, { passive: false });
+canvas.addEventListener("touchend", () => { pinch = null; });
+
+window.addEventListener("resize", () => { resize(); });
+
+async function main() {
+  resize();
+  const [lightData, italy] = await Promise.all([
+    fetch("data/lights.json").then((response) => response.json()),
+    fetch("data/italy.json").then((response) => response.json()),
+  ]);
+  lights = lightData;
+  rings = italy.rings;
+  const rotating = lights.filter((light) => light.kind === "rotating").length;
+  document.getElementById("lede").textContent =
+    `${lights.length} lights on the Italian coast. ${rotating} rotating optics sweep on their own period; the others flash. Each beam reaches its nominal range.`;
+  statusEl.textContent = "";
+  statusEl.classList.add("gone");
+  statusEl.dataset.ready = String(lights.length);
+  fitItaly();
+  frame(performance.now());
+}
+
+main().catch((error) => {
+  statusEl.textContent = "The light data could not be read. Open this page from a local server.";
+  console.error(error);
+});
+</script>
+</body>
+</html>
