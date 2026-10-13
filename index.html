@@ -459,8 +459,8 @@ function drawLand() {
   ctx.lineWidth = 1.4;
   ctx.stroke();
   ctx.fillStyle = "#121920";
-  // Nonzero keeps overlapping regional borders filled. Even-odd would
-  // punch holes where two regions share an edge and let beams show on land.
+  // The rings are the outer shore only. Nonzero fills each of them, so the
+  // interior of the mainland and of every island stays opaque to the beams.
   ctx.fill("nonzero");
 }
 

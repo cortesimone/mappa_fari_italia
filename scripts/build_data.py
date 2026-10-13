@@ -3,7 +3,8 @@
 
 Light characteristics come from the WAIL reference cards published by ARI Genova
 (https://www.arigenova.it/wail/referenze%20fari%20italiani.php). Positions come
-from that same index. The coastline is the Openpolis regional boundary, simplified.
+from that same index. The coastline is the Openpolis regional boundary, dissolved
+to the outer shore of the landmass and then simplified.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import json
 import math
 import re
 import urllib.request
+from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -561,9 +563,47 @@ def douglas_peucker(points: list, epsilon: float) -> list:
     return [point for point, flagged in zip(points, keep) if flagged]
 
 
-def simplify_italy(features: list[dict]) -> list:
-    rings = []
-    before = 0
+def _coast_key(point) -> tuple[float, float]:
+    return (round(point[0], 6), round(point[1], 6))
+
+
+def _ring_area(ring: list) -> float:
+    area = 0.0
+    for index in range(len(ring) - 1):
+        x1, y1 = ring[index]
+        x2, y2 = ring[index + 1]
+        area += x1 * y2 - x2 * y1
+    return area / 2
+
+
+def _next_shore(previous, current, choices: list):
+    """Stay on one shore ring where two rings only touch at a vertex.
+
+    Outgoing edges are ordered by the turn away from the edge just walked.
+    The tightest turn keeps touching islets apart instead of bridging them.
+    """
+    incoming = math.atan2(current[1] - previous[1], current[0] - previous[0])
+    base = incoming + math.pi
+    best = None
+    best_turn = None
+    for nxt in choices:
+        turn = (math.atan2(nxt[1] - current[1], nxt[0] - current[0]) - base) % (2 * math.pi)
+        if best_turn is None or turn < best_turn:
+            best_turn = turn
+            best = nxt
+    return best
+
+
+def territorial_rings(features: list[dict]) -> list:
+    """Outer shore of the Italian landmass, islands included.
+
+    Shared regional borders meet as a pair of opposite edges, so they cancel
+    and cannot leave a gap for a beam. Rings that remain inside that shore
+    are land-locked enclaves (San Marino, Vatican City, and a small ring south
+    of Castel Gandolfo). They are filled: territorial Italy is one solid mask,
+    and a beam that has met the coast does not reappear inland.
+    """
+    directed: set[tuple] = set()
     for feature in features:
         geometry = feature["geometry"]
         polygons = (
@@ -573,29 +613,86 @@ def simplify_italy(features: list[dict]) -> list:
         )
         for polygon in polygons:
             for ring in polygon:
-                before += len(ring)
-                if len(ring) < 4:
-                    continue
-                lons = [point[0] for point in ring]
-                lats = [point[1] for point in ring]
-                span = max(max(lons) - min(lons), max(lats) - min(lats))
-                # Keep islets. A 1 km tolerance would erase the rocks lights stand on.
-                if span < 0.08 or len(ring) < 40:
-                    epsilon = 0.0015
-                elif span < 0.4:
-                    epsilon = 0.0035
-                else:
-                    epsilon = 0.006
-                simplified = douglas_peucker(ring, epsilon)
-                if len(simplified) < 4:
-                    simplified = ring[:: max(1, len(ring) // 12)]
-                    if simplified[0] != simplified[-1]:
-                        simplified.append(simplified[0])
-                if len(simplified) < 4:
-                    continue
-                if simplified[0] != simplified[-1]:
-                    simplified.append(simplified[0])
-                rings.append([[round(x, 4), round(y, 4)] for x, y in simplified])
+                points = [_coast_key(point) for point in ring]
+                if points[0] != points[-1]:
+                    points.append(points[0])
+                for start, end in zip(points, points[1:]):
+                    if start != end:
+                        directed.add((start, end))
+    boundary = [(start, end) for start, end in directed if (end, start) not in directed]
+    outgoing: dict[tuple, list] = defaultdict(list)
+    for start, end in boundary:
+        outgoing[start].append(end)
+
+    unused = set(boundary)
+    rings = []
+    while unused:
+        start, nxt = unused.pop()
+        ring = [start]
+        previous, current = start, nxt
+        while current != start:
+            ring.append(current)
+            choices = [point for point in outgoing[current] if (current, point) in unused]
+            if not choices:
+                raise RuntimeError(f"shore ring broke at {current}")
+            nxt = choices[0] if len(choices) == 1 else _next_shore(previous, current, choices)
+            unused.remove((current, nxt))
+            previous, current = current, nxt
+        ring.append(start)
+        rings.append(ring)
+
+    exteriors = []
+    holes = []
+    for ring in rings:
+        area = _ring_area(ring)
+        if area < 0:
+            exteriors.append(ring)
+        elif area > 0:
+            holes.append(ring)
+    for hole in holes:
+        lon = sum(point[0] for point in hole) / len(hole)
+        lat = sum(point[1] for point in hole) / len(hole)
+        if not any(point_in_ring(lon, lat, outer) for outer in exteriors):
+            raise RuntimeError(f"positive ring is not inside the landmass ({lat:.4f}, {lon:.4f})")
+    print(f"shore rings {len(exteriors)}; filled {len(holes)} land-locked enclaves")
+    return exteriors
+
+
+def simplify_italy(features: list[dict]) -> list:
+    rings = []
+    before = 0
+    for ring in territorial_rings(features):
+        before += len(ring)
+        if len(ring) < 4:
+            continue
+        lons = [point[0] for point in ring]
+        lats = [point[1] for point in ring]
+        span = max(max(lons) - min(lons), max(lats) - min(lats))
+        # Keep islets. A 1 km tolerance would erase the rocks lights stand on.
+        if span < 0.08 or len(ring) < 40:
+            epsilon = 0.0015
+        elif span < 0.4:
+            epsilon = 0.0035
+        else:
+            epsilon = 0.006
+        simplified = douglas_peucker(ring, epsilon)
+        if len(simplified) < 4:
+            simplified = ring[:: max(1, len(ring) // 12)]
+            if simplified[0] != simplified[-1]:
+                simplified.append(simplified[0])
+        if len(simplified) < 4:
+            continue
+        if simplified[0] != simplified[-1]:
+            simplified.append(simplified[0])
+        rounded = [[round(x, 4), round(y, 4)] for x, y in simplified]
+        cleaned = [rounded[0]]
+        for point in rounded[1:]:
+            if point != cleaned[-1]:
+                cleaned.append(point)
+        if cleaned[0] != cleaned[-1]:
+            cleaned.append(cleaned[0])
+        if len(cleaned) >= 4:
+            rings.append(cleaned)
     after = sum(len(ring) for ring in rings)
     print(f"coast points {before} -> {after} across {len(rings)} rings")
     return rings

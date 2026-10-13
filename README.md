@@ -96,7 +96,7 @@ A light record looks like this:
 
 `kind` is `rotating`, `flash`, or `fixed`. `period` is seconds. `range` is nautical miles. `height` is meters above the sea, or above the ground when that is all the card gives. `beams` is present only for a rotating optic: `ang` is the beam's place in the pattern, in degrees clockwise from north, and `width` is its angular width. `phases` is the light and dark intervals in seconds, starting with a light. `sectors` are the arcs the light shines toward, clockwise from `a` to `b`, after the seaward bearings have been turned around. `sectorText` and `optic` keep the wording printed on the card.
 
-`data/italy.json` is `{ "rings": [ [ [lon, lat], ... ], ... ] }`. The page fills those rings after the beams, so shared regional borders stay filled and the rays stop at the shore.
+`data/italy.json` is `{ "rings": [ [ [lon, lat], ... ], ... ] }`. Each ring is an outer shore: the mainland, an island, or a rock. The page fills those rings after the beams, so a ray stops at the coast and does not show through inland.
 
 ## Rebuild the data
 
@@ -120,7 +120,7 @@ The script writes `data/lights.json` and `data/italy.json`. It drops cards with 
 
 This is the WAIL list of major Italian lights, not every buoy and harbour lamp. A few harbour lights from that list are included when the card gives a character and a range.
 
-The coast is a simplified regional outline, about 9,500 points. A light on a mole can sit slightly inland of that line, and its beam is then covered. Small rocks are kept, but the shore is not accurate enough for navigation.
+The coast is a simplified outline of the landmass, about 6,400 points. A light on a mole can sit slightly inland of that line, and its beam is then covered. Small rocks are kept, but the shore is not accurate enough for navigation.
 
 Some sector sentences on the cards are prose rather than a pair of bearings. Those lights are drawn all round. The card on the map glosses the common Italian words (`Vis`, `oscurato`, `settore`) into English and leaves the bearings as printed.
 
